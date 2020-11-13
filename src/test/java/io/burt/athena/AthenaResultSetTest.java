@@ -1,6 +1,7 @@
 package io.burt.athena;
 
 import io.burt.athena.configuration.ConnectionConfiguration;
+import io.burt.athena.configuration.ResultLoadingStrategy;
 import io.burt.athena.result.PreloadingStandardResult;
 import io.burt.athena.result.Result;
 import io.burt.athena.result.StandardResult;
@@ -67,14 +68,12 @@ import static org.mockito.Mockito.mock;
 @DisplayNameGeneration(TestNameGenerator.class)
 class AthenaResultSetTest {
     private AthenaStatement parentStatement;
-    private ConnectionConfiguration connectionConfiguration;
     private AthenaResultSet resultSet;
     private GetQueryResultsHelper queryResultsHelper;
 
     @BeforeEach
     void setUpResultSet() {
         parentStatement = mock(AthenaStatement.class);
-        connectionConfiguration = new ConfigurableConnectionConfiguration("test_db", "test_wg", "s3://test/location", Duration.ofMillis(10), Duration.ofMillis(10), () -> null, () -> null, () -> null, (q) -> null);
         QueryExecution queryExecution = QueryExecution.builder().queryExecutionId("Q1234").build();
         queryResultsHelper = new GetQueryResultsHelper();
         Result result = new PreloadingStandardResult(queryResultsHelper, queryExecution, StandardResult.MAX_FETCH_SIZE, Duration.ofSeconds(1));

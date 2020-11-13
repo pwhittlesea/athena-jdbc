@@ -3,6 +3,7 @@ package io.burt.athena;
 import io.burt.athena.configuration.ConnectionConfiguration;
 import io.burt.athena.polling.PollingStrategy;
 import io.burt.athena.result.Result;
+import io.burt.athena.result.ResultFactory;
 import io.burt.athena.support.ConfigurableConnectionConfiguration;
 import io.burt.athena.support.QueryExecutionHelper;
 import io.burt.athena.support.TestClock;
@@ -12,6 +13,8 @@ import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.athena.model.GetQueryExecutionRequest;
 import software.amazon.awssdk.services.athena.model.InternalServerException;
@@ -38,26 +41,32 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayNameGeneration(TestNameGenerator.class)
 class AthenaStatementTest {
+    @Captor
+    private ArgumentCaptor<QueryExecution> queryExecutionCaptor;
+
     private Result result;
+    private ResultFactory resultFactory;
     private QueryExecutionHelper queryExecutionHelper;
     private AthenaStatement statement;
     private PollingStrategy pollingStrategy;
-    private QueryExecution resultFactoryQueryExecution;
     private TestClock clock;
 
     @BeforeEach
     void setUpStatement() {
         result = mock(Result.class);
+        resultFactory = mock(ResultFactory.class);
         pollingStrategy = createPollingStrategy();
         clock = new TestClock();
         queryExecutionHelper = new QueryExecutionHelper(clock);
-        statement = new AthenaStatement(createConfiguration(), clock);
+        statement = new AthenaStatement(createConfiguration(), clock, resultFactory);
     }
 
     PollingStrategy createPollingStrategy() {
@@ -81,10 +90,7 @@ class AthenaStatementTest {
                 () -> queryExecutionHelper,
                 () -> null,
                 () -> pollingStrategy,
-                (q) -> {
-                    resultFactoryQueryExecution = q;
-                    return result;
-                }
+                () -> null
         );
     }
 
@@ -197,7 +203,7 @@ class AthenaStatementTest {
         class WhenInterruptedWhileSleeping {
             @BeforeEach
             void setUp() {
-                statement = new AthenaStatement(createConfiguration().withNetworkTimeout(Duration.ofSeconds(10)), clock);
+                statement = new AthenaStatement(createConfiguration().withNetworkTimeout(Duration.ofSeconds(10)), clock, resultFactory);
             }
 
             @Test
@@ -300,13 +306,18 @@ class AthenaStatementTest {
         class WhenTheResultSetIsUsed {
             @Test
             void createsAResultFromTheQueryExecution() throws Exception {
+                when(resultFactory.createResult(any())).thenReturn(result);
+
                 ResultSet rs = execute();
                 rs.next();
-                assertEquals("Q1234", resultFactoryQueryExecution.queryExecutionId());
+                verify(resultFactory).createResult(queryExecutionCaptor.capture());
+                assertEquals("Q1234", queryExecutionCaptor.getValue().queryExecutionId());
             }
 
             @Test
             void proxiesToTheResultInstance1() throws Exception {
+                when(resultFactory.createResult(any())).thenReturn(result);
+
                 ResultSet rs = execute();
                 rs.next();
                 verify(result).next();
@@ -314,6 +325,8 @@ class AthenaStatementTest {
 
             @Test
             void proxiesToTheResultInstance2() throws Exception {
+                when(resultFactory.createResult(any())).thenReturn(result);
+
                 ResultSet rs = execute();
                 rs.getMetaData();
                 verify(result).getMetaData();

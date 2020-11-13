@@ -1,6 +1,7 @@
 package io.burt.athena;
 
 import io.burt.athena.configuration.ConnectionConfiguration;
+import io.burt.athena.result.ResultFactory;
 
 import java.sql.Array;
 import java.sql.Blob;
@@ -27,14 +28,21 @@ import java.util.Properties;
 import java.util.concurrent.Executor;
 
 public class AthenaConnection implements Connection {
+    private final ResultFactory resultFactory;
+
     private ConnectionConfiguration configuration;
     private DatabaseMetaData metaData;
     private boolean open;
 
     AthenaConnection(ConnectionConfiguration configuration) {
+        this(configuration, new ResultFactory(configuration));
+    }
+
+    AthenaConnection(ConnectionConfiguration configuration, ResultFactory resultFactory) {
         this.configuration = configuration;
         this.metaData = null;
         this.open = true;
+        this.resultFactory = resultFactory;
     }
 
     private void checkClosed() throws SQLException {
@@ -46,7 +54,7 @@ public class AthenaConnection implements Connection {
     @Override
     public Statement createStatement() throws SQLException {
         checkClosed();
-        return new AthenaStatement(configuration, Clock.systemDefaultZone());
+        return new AthenaStatement(configuration, Clock.systemDefaultZone(), resultFactory);
     }
 
     @Override

@@ -2,13 +2,8 @@ package io.burt.athena.configuration;
 
 import io.burt.athena.polling.PollingStrategies;
 import io.burt.athena.polling.PollingStrategy;
-import io.burt.athena.result.PreloadingStandardResult;
-import io.burt.athena.result.Result;
-import io.burt.athena.result.S3Result;
-import io.burt.athena.result.StandardResult;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.athena.AthenaAsyncClient;
-import software.amazon.awssdk.services.athena.model.QueryExecution;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 
 import java.time.Duration;
@@ -91,6 +86,11 @@ class ConcreteConnectionConfiguration implements ConnectionConfiguration {
     }
 
     @Override
+    public ResultLoadingStrategy resultLoadingStrategy() {
+        return resultLoadingStrategy;
+    }
+
+    @Override
     public ConnectionConfiguration withDatabaseName(String databaseName) {
         return new ConcreteConnectionConfiguration(awsRegion, databaseName, workGroupName, outputLocation, networkTimeout, queryTimeout, resultLoadingStrategy, athenaClient, s3Client, pollingStrategy);
     }
@@ -103,17 +103,6 @@ class ConcreteConnectionConfiguration implements ConnectionConfiguration {
     @Override
     public ConnectionConfiguration withQueryTimeout(Duration queryTimeout) {
         return new ConcreteConnectionConfiguration(awsRegion, databaseName, workGroupName, outputLocation, networkTimeout, queryTimeout, resultLoadingStrategy, athenaClient, s3Client, pollingStrategy);
-    }
-
-    @Override
-    public Result createResult(QueryExecution queryExecution) {
-        if (resultLoadingStrategy == ResultLoadingStrategy.GET_EXECUTION_RESULTS) {
-            return new PreloadingStandardResult(athenaClient(), queryExecution, StandardResult.MAX_FETCH_SIZE, Duration.ofSeconds(10));
-        } else if (resultLoadingStrategy == ResultLoadingStrategy.S3) {
-            return new S3Result(s3Client(), queryExecution, Duration.ofSeconds(10));
-        } else {
-            throw new IllegalStateException(String.format("No such result loading strategy: %s", queryExecution));
-        }
     }
 
     @Override

@@ -1,6 +1,7 @@
 package io.burt.athena;
 
 import io.burt.athena.configuration.ConnectionConfiguration;
+import io.burt.athena.result.ResultFactory;
 import software.amazon.awssdk.services.athena.AthenaAsyncClient;
 import software.amazon.awssdk.services.athena.model.QueryExecution;
 
@@ -22,7 +23,8 @@ import java.util.function.Function;
 
 public class AthenaStatement implements Statement {
     private final AthenaAsyncClient athenaClient;
-    private Clock clock;
+    private final Clock clock;
+    private final ResultFactory resultFactory;
 
     private ConnectionConfiguration configuration;
     private String queryExecutionId;
@@ -30,10 +32,11 @@ public class AthenaStatement implements Statement {
     private Function<String, Optional<String>> clientRequestTokenProvider;
     private boolean open;
 
-    AthenaStatement(ConnectionConfiguration configuration, Clock clock) {
+    AthenaStatement(ConnectionConfiguration configuration, Clock clock, ResultFactory resultFactory) {
         this.configuration = configuration;
         this.athenaClient = configuration.athenaClient();
         this.clock = clock;
+        this.resultFactory = resultFactory;
         this.queryExecutionId = null;
         this.currentResultSet = null;
         this.clientRequestTokenProvider = sql -> Optional.empty();
@@ -89,9 +92,7 @@ public class AthenaStatement implements Statement {
             SQLTimeoutException ste = new SQLTimeoutException(te);
             if (queryExecutionId != null) {
                 try {
-                    athenaClient.stopQueryExecution(b -> {
-                        b.queryExecutionId(queryExecutionId);
-                    });
+                    athenaClient.stopQueryExecution(b -> b.queryExecutionId(queryExecutionId));
                 } catch (Exception e) {
                     ste.addSuppressed(e);
                 }
@@ -139,7 +140,7 @@ public class AthenaStatement implements Statement {
 
     private ResultSet createResultSet(QueryExecution queryExecution) {
         return new AthenaResultSet(
-                configuration.createResult(queryExecution),
+                resultFactory.createResult(queryExecution),
                 this
         );
     }

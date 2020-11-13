@@ -2,6 +2,7 @@ package io.burt.athena;
 
 import io.burt.athena.configuration.ConnectionConfiguration;
 import io.burt.athena.polling.PollingStrategy;
+import io.burt.athena.result.ResultFactory;
 import io.burt.athena.support.ConfigurableConnectionConfiguration;
 import io.burt.athena.support.QueryExecutionHelper;
 import io.burt.athena.support.TestNameGenerator;
@@ -54,7 +55,7 @@ class AthenaConnectionTest {
         pollingStrategy = createPollingStrategy();
         queryExecutionHelper = new QueryExecutionHelper();
         connectionConfiguration = spy(createConfiguration());
-        connection = new AthenaConnection(connectionConfiguration);
+        connection = new AthenaConnection(connectionConfiguration, mock(ResultFactory.class));
     }
 
     PollingStrategy createPollingStrategy() {
@@ -78,7 +79,7 @@ class AthenaConnectionTest {
                 () -> queryExecutionHelper,
                 () -> null,
                 () -> pollingStrategy,
-                (q) -> null
+                () -> null
         );
     }
 
