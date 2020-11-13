@@ -23,7 +23,7 @@ public class AthenaDataSource implements DataSource {
         this(new ConnectionConfigurationFactory());
     }
 
-    AthenaDataSource(ConnectionConfigurationFactory connectionConfigurationFactory) {
+    public AthenaDataSource(ConnectionConfigurationFactory connectionConfigurationFactory) {
         this.driver = new AthenaDriver(connectionConfigurationFactory);
         this.databaseName = "default";
         this.properties = new Properties();
